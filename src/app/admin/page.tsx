@@ -1,29 +1,45 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { Building2, Users, CalendarDays, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
-export const metadata = { title: "Super Admin" };
+export default function SuperAdminPage() {
+  const [loading, setLoading] = useState(true);
+  const [metrics, setMetrics] = useState({ totalBusinesses: 0, activeBusinesses: 0, totalUsers: 0, totalBookings: 0 });
+  const [businesses, setBusinesses] = useState<any[]>([]);
+  const supabase = createClient();
 
-export default async function SuperAdminPage() {
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
-  if (!user) redirect("/login");
+  useEffect(() => {
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { window.location.href = "/login"; return; }
 
-  // Platform metrics
-  const [bizRes, usersRes, bookingsRes] = await Promise.all([
-    supabase.from("businesses").select("id, name, is_active, created_at, slug"),
-    supabase.from("profiles").select("id, role", { count: "exact" }),
-    supabase.from("bookings").select("id, status, payment_status", { count: "exact" }),
-  ]);
+      const [bizRes, usersRes, bookingsRes] = await Promise.all([
+        supabase.from("businesses").select("id, name, is_active, created_at, slug").order("created_at", { ascending: false }),
+        supabase.from("profiles").select("id", { count: "exact" }),
+        supabase.from("bookings").select("id", { count: "exact" }),
+      ]);
 
-  const businesses = bizRes.data ?? [];
-  const totalBusinesses = businesses.length;
-  const activeBusinesses = businesses.filter((b) => b.is_active).length;
-  const totalUsers = usersRes.count ?? 0;
-  const totalBookings = bookingsRes.count ?? 0;
-  const paidBookings = (bookingsRes.data ?? []).filter((b) => b.payment_status === "paid").length;
+      const bizData = bizRes.data ?? [];
+      setBusinesses(bizData);
+      setMetrics({
+        totalBusinesses: bizData.length,
+        activeBusinesses: bizData.filter(b => b.is_active).length,
+        totalUsers: usersRes.count ?? 0,
+        totalBookings: bookingsRes.count ?? 0,
+      });
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  if (loading) return (
+    <div className="flex justify-center py-20">
+      <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
     <div>
@@ -35,10 +51,10 @@ export default async function SuperAdminPage() {
       {/* Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { label: "Total Businesses", value: totalBusinesses, icon: Building2, color: "text-blue-600 bg-blue-50" },
-          { label: "Active Businesses", value: activeBusinesses, icon: TrendingUp, color: "text-green-600 bg-green-50" },
-          { label: "Total Users", value: totalUsers, icon: Users, color: "text-purple-600 bg-purple-50" },
-          { label: "Total Bookings", value: totalBookings, icon: CalendarDays, color: "text-orange-600 bg-orange-50" },
+          { label: "Total Businesses", value: metrics.totalBusinesses, icon: Building2, color: "text-blue-600 bg-blue-50" },
+          { label: "Active Businesses", value: metrics.activeBusinesses, icon: TrendingUp, color: "text-green-600 bg-green-50" },
+          { label: "Total Users", value: metrics.totalUsers, icon: Users, color: "text-purple-600 bg-purple-50" },
+          { label: "Total Bookings", value: metrics.totalBookings, icon: CalendarDays, color: "text-orange-600 bg-orange-50" },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-white rounded-xl p-5 shadow-sm">
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${color}`}>
@@ -54,12 +70,10 @@ export default async function SuperAdminPage() {
       <div className="bg-white rounded-xl shadow-sm">
         <div className="p-5 border-b flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">All Businesses</h2>
-          <span className="text-sm text-gray-500">{totalBusinesses} total</span>
+          <span className="text-sm text-gray-500">{metrics.totalBusinesses} total</span>
         </div>
         {!businesses.length ? (
-          <div className="p-10 text-center text-gray-500">
-            No businesses registered yet.
-          </div>
+          <div className="p-10 text-center text-gray-500">No businesses registered yet.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -88,19 +102,14 @@ export default async function SuperAdminPage() {
                       {new Date(biz.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-5 py-3">
-                      <Link
+                      <a
                         href={`/book/${biz.slug}`}
                         target="_blank"
+                        rel="noopener noreferrer"
                         className="text-blue-600 hover:underline text-xs mr-3"
                       >
                         View →
-                      </Link>
-                      <Link
-                        href={`/admin/businesses/${biz.id}`}
-                        className="text-gray-500 hover:underline text-xs"
-                      >
-                        Manage
-                      </Link>
+                      </a>
                     </td>
                   </tr>
                 ))}

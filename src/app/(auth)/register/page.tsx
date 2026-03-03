@@ -1,31 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { registerSchema, type RegisterInput } from "@/lib/validations/schemas";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isStaffInvite, setIsStaffInvite] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
   });
 
+  useEffect(() => {
+    const invite = searchParams.get("invite");
+    if (invite) setIsStaffInvite(true);
+  }, [searchParams]);
+
   async function onSubmit(data: RegisterInput) {
     setLoading(true);
     setError(null);
+    const invite = searchParams.get("invite");
+    const confirmUrl = new URL(`${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/confirm`);
+    // Pass invite param directly in the redirect URL so it survives email link clicks
+    if (invite) confirmUrl.searchParams.set("invite", invite);
     const { error: authError } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
-      options: { data: { name: data.name } },
+      options: {
+        data: { name: data.name },
+        emailRedirectTo: confirmUrl.toString(),
+      },
     });
     if (authError) {
       setError(authError.message);
@@ -42,7 +56,11 @@ export default function RegisterPage() {
         <div className="w-full max-w-md bg-white rounded-2xl shadow-sm p-8 text-center">
           <div className="text-5xl mb-4">✉️</div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Check your email</h2>
-          <p className="text-gray-600 text-sm">We sent a confirmation link to your email address. Click it to activate your account.</p>
+          <p className="text-gray-600 text-sm">
+            {isStaffInvite
+              ? "We sent a confirmation link to your email. Click it to activate your account and you'll be added as staff automatically."
+              : "We sent a confirmation link to your email address. Click it to activate your account."}
+          </p>
         </div>
       </div>
     );
@@ -53,7 +71,14 @@ export default function RegisterPage() {
       <div className="w-full max-w-md bg-white rounded-2xl shadow-sm p-8">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-blue-700 mb-1">BookMyThing</h1>
-          <p className="text-gray-600">Create your account</p>
+          {isStaffInvite ? (
+            <div className="mt-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+              <p className="text-green-800 text-sm font-medium">👋 You've been invited as staff!</p>
+              <p className="text-green-600 text-xs mt-0.5">Create an account to join your team.</p>
+            </div>
+          ) : (
+            <p className="text-gray-600">Create your account</p>
+          )}
         </div>
 
         {error && (

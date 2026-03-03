@@ -18,13 +18,18 @@ export default function AuthRedirectPage() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role, business_id")
+        .select("role, business_id, has_chosen_role")
         .eq("id", user.id)
         .single();
 
       if (!profile) {
-        // Profile not found — default to customer bookings
         window.location.href = "/customer/bookings";
+        return;
+      }
+
+      // New user — send to welcome screen
+      if (!profile.has_chosen_role) {
+        window.location.href = "/welcome";
         return;
       }
 
@@ -36,7 +41,7 @@ export default function AuthRedirectPage() {
           window.location.href = profile.business_id ? "/dashboard" : "/onboarding";
           break;
         case "staff":
-          window.location.href = "/staff";
+          window.location.href = `/dashboard/staff/${user.id}`;
           break;
         case "customer":
         default:

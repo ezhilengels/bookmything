@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Routes that require authentication
-const PROTECTED_ROUTES = ["/dashboard", "/staff", "/customer", "/admin", "/onboarding"];
+const PROTECTED_ROUTES = ["/dashboard", "/staff", "/customer", "/admin", "/onboarding", "/welcome"];
 // Routes only accessible when NOT logged in
 const AUTH_ROUTES = ["/login", "/register"];
 
@@ -57,6 +57,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/auth/login|api/payments/webhook|api/cron).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/auth/login|api/payments/webhook|api/cron|auth/confirm).*)",
   ],
 };

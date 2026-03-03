@@ -55,6 +55,24 @@ export function bookingStatusColor(status: BookingStatus): string {
 
 export const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
+/** Haversine formula — returns straight-line distance in km between two lat/lng points */
+export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/** Format km distance for display e.g. "2.4 km" or "800 m" */
+export function formatDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  return `${km.toFixed(1)} km`;
+}
+
 export function slugify(str: string): string {
   return str
     .toLowerCase()

@@ -24,6 +24,7 @@ export default function BookingConfirmationPage() {
   const [business, setBusiness] = useState<{ id: string; name: string; timezone: string } | null>(null);
   const [staff, setStaff] = useState<{ name: string } | null>(null);
   const [notes, setNotes] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "cod">("cod");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +40,7 @@ export default function BookingConfirmationPage() {
 
   async function handleBook() {
     const { data: { session: _sess } } = await supabase.auth.getSession();
-  const user = _sess?.user ?? null;
+    const user = _sess?.user ?? null;
     if (!user) {
       router.push(`/login?redirectTo=${window.location.pathname}${window.location.search}`);
       return;
@@ -49,7 +50,7 @@ export default function BookingConfirmationPage() {
     setError(null);
 
     try {
-      // 1. Create booking
+      // Create booking
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -58,7 +59,13 @@ export default function BookingConfirmationPage() {
       const { data: booking, error: bookingErr } = await res.json();
       if (bookingErr || !booking) throw new Error(bookingErr ?? "Failed to create booking");
 
-      // 2. Create Razorpay order
+      if (paymentMethod === "cod") {
+        // COD — booking confirmed, pay at venue
+        router.push(`/customer/bookings?booked=${booking.id}`);
+        return;
+      }
+
+      // Online payment via Razorpay
       const orderRes = await fetch("/api/payments/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -66,7 +73,6 @@ export default function BookingConfirmationPage() {
       });
       const { orderId, amount } = await orderRes.json();
 
-      // 3. Open Razorpay modal
       const script = document.createElement("script");
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
       document.body.appendChild(script);
@@ -98,7 +104,8 @@ export default function BookingConfirmationPage() {
       <div className="container mx-auto px-4 py-8 max-w-lg">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Confirm Booking</h1>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+        {/* Booking Summary */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-4">
           <h2 className="font-semibold text-gray-800 mb-4">Booking Summary</h2>
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
@@ -124,6 +131,43 @@ export default function BookingConfirmationPage() {
           </div>
         </div>
 
+        {/* Payment Method */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-4">
+          <h2 className="font-semibold text-gray-800 mb-3">Payment Method</h2>
+          <div className="space-y-2">
+            <label className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors ${paymentMethod === "cod" ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"}`}>
+              <input
+                type="radio"
+                name="payment"
+                value="cod"
+                checked={paymentMethod === "cod"}
+                onChange={() => setPaymentMethod("cod")}
+                className="text-blue-600"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-900">Pay at Venue</p>
+                <p className="text-xs text-gray-500">Pay in cash when you arrive</p>
+              </div>
+            </label>
+
+            <label className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors ${paymentMethod === "online" ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"}`}>
+              <input
+                type="radio"
+                name="payment"
+                value="online"
+                checked={paymentMethod === "online"}
+                onChange={() => setPaymentMethod("online")}
+                className="text-blue-600"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-900">Pay Online</p>
+                <p className="text-xs text-gray-500">UPI, card, net banking via Razorpay</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* Notes */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optional)</label>
           <textarea
@@ -144,7 +188,11 @@ export default function BookingConfirmationPage() {
           disabled={loading}
           className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
-          {loading ? "Processing…" : `Pay ${formatCurrency(service.price)} & Confirm`}
+          {loading
+            ? "Processing…"
+            : paymentMethod === "cod"
+              ? "Confirm Booking"
+              : `Pay ${formatCurrency(service.price)} & Confirm`}
         </button>
 
         <p className="text-center text-xs text-gray-400 mt-4">

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { createBookingSchema } from "@/lib/validations/schemas";
 import { addMinutes, parseISO } from "date-fns";
 
@@ -29,8 +29,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Service not found or inactive" }, { status: 404 });
   }
 
-  // Verify staff belongs to the same business
-  const { data: staffProfile } = await supabase
+  // Verify staff belongs to the same business (service client bypasses RLS on profiles)
+  const adminSupabase = createServiceClient();
+  const { data: staffProfile } = await adminSupabase
     .from("profiles")
     .select("business_id, role")
     .eq("id", staff_id)
@@ -91,7 +92,11 @@ export async function GET(request: NextRequest) {
 
   const { data: profile } = await supabase.from("profiles").select("role, business_id").eq("id", user.id).single();
 
-  let query = supabase
+  // Use service client so profile joins (customer/staff names) are not blocked by RLS
+  const adminSupabase = createServiceClient();
+  const statusParam = request.nextUrl.searchParams.get("status");
+
+  let query = adminSupabase
     .from("bookings")
     .select("*, service:services(name,price), staff:profiles!bookings_staff_id_fkey(name), customer:profiles!bookings_customer_id_fkey(name,phone)")
     .order("start_time", { ascending: false });
@@ -102,6 +107,10 @@ export async function GET(request: NextRequest) {
     query = query.eq("customer_id", user.id);
   } else if (profile?.role === "staff") {
     query = query.eq("staff_id", user.id);
+  }
+
+  if (statusParam) {
+    query = query.eq("status", statusParam);
   }
 
   const { data: bookings, error } = await query;

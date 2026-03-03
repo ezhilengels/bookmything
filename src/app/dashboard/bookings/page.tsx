@@ -1,111 +1,179 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { formatDateTime, bookingStatusColor, bookingStatusLabel, formatCurrency } from "@/lib/utils";
-import type { BookingStatus } from "@/types";
 
-export const metadata = { title: "Bookings" };
+const STATUS_FILTERS = [
+  { value: "", label: "All" },
+  { value: "new", label: "Pending" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
+];
 
-export default async function BookingsPage({
-  searchParams,
-}: {
-  searchParams: { status?: string };
-}) {
-  const supabase = await createClient();
-  const { data: { session: _sess } } = await supabase.auth.getSession();
-  const user = _sess?.user ?? null;
-  if (!user) redirect("/login");
+// Actions available per current status
+const ACTIONS: Record<string, { label: string; next: string; color: string }[]> = {
+  new: [
+    { label: "Confirm",  next: "confirmed", color: "text-green-600 hover:text-green-800 font-medium" },
+    { label: "Cancel",   next: "cancelled",  color: "text-red-500 hover:text-red-700" },
+  ],
+  confirmed: [
+    { label: "Complete", next: "completed",  color: "text-blue-600 hover:text-blue-800 font-medium" },
+    { label: "No-show",  next: "no_show",    color: "text-orange-500 hover:text-orange-700" },
+    { label: "Cancel",   next: "cancelled",  color: "text-red-500 hover:text-red-700" },
+  ],
+};
 
-  const { data: profile } = await supabase.from("profiles").select("business_id").eq("id", user.id).single();
-  if (!profile?.business_id) redirect("/onboarding");
+export default function BookingsPage() {
+  const [loading, setLoading] = useState(true);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [timezone, setTimezone] = useState("Asia/Kolkata");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [updating, setUpdating] = useState<string | null>(null);
+  const supabase = createClient();
 
-  const { data: business } = await supabase.from("businesses").select("timezone").eq("id", profile.business_id).single();
+  useEffect(() => {
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { window.location.href = "/login"; return; }
 
-  let query = supabase
-    .from("bookings")
-    .select("*, service:services(name,price), staff:profiles!bookings_staff_id_fkey(name), customer:profiles!bookings_customer_id_fkey(name,phone)")
-    .eq("business_id", profile.business_id)
-    .order("start_time", { ascending: false });
+      const { data: profile } = await supabase
+        .from("profiles").select("business_id").eq("id", session.user.id).single();
+      if (!profile?.business_id) { window.location.href = "/onboarding"; return; }
 
-  if (searchParams.status) {
-    query = query.eq("status", searchParams.status as BookingStatus);
+      const { data: biz } = await supabase
+        .from("businesses").select("timezone").eq("id", profile.business_id).single();
+      setTimezone(biz?.timezone ?? "Asia/Kolkata");
+
+      await fetchBookings("");
+    }
+    load();
+  }, []);
+
+  async function fetchBookings(status: string) {
+    setLoading(true);
+    const url = status ? `/api/bookings?status=${status}` : "/api/bookings";
+    const res = await fetch(url);
+    if (res.ok) {
+      const json = await res.json();
+      setBookings(json.data ?? []);
+    }
+    setLoading(false);
   }
 
-  const { data: bookings } = await query.limit(50);
+  async function changeFilter(status: string) {
+    setStatusFilter(status);
+    await fetchBookings(status);
+  }
 
-  const STATUS_FILTERS: { value: string; label: string }[] = [
-    { value: "", label: "All" },
-    { value: "new", label: "Pending" },
-    { value: "confirmed", label: "Confirmed" },
-    { value: "completed", label: "Completed" },
-    { value: "cancelled", label: "Cancelled" },
-  ];
+  async function updateStatus(bookingId: string, status: string) {
+    setUpdating(bookingId + status);
+    const res = await fetch(`/api/bookings/${bookingId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (res.ok) {
+      setBookings(prev =>
+        prev.map(b => b.id === bookingId ? { ...b, status } : b)
+      );
+    }
+    setUpdating(null);
+  }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Bookings</h1>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Bookings</h1>
+        <p className="text-sm text-gray-500 mt-1">All appointments for your business</p>
+      </div>
 
       {/* Status Filters */}
       <div className="flex gap-2 mb-6 flex-wrap">
         {STATUS_FILTERS.map(({ value, label }) => (
-          <a
+          <button
             key={value}
-            href={value ? `?status=${value}` : "/dashboard/bookings"}
+            onClick={() => changeFilter(value)}
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              (searchParams.status ?? "") === value
+              statusFilter === value
                 ? "bg-blue-600 text-white"
                 : "bg-white text-gray-600 border hover:border-blue-400"
             }`}
           >
             {label}
-          </a>
+          </button>
         ))}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-gray-500 text-xs uppercase bg-gray-50">
-              <th className="px-5 py-3">Customer</th>
-              <th className="px-5 py-3">Service</th>
-              <th className="px-5 py-3">Staff</th>
-              <th className="px-5 py-3">Date & Time</th>
-              <th className="px-5 py-3">Amount</th>
-              <th className="px-5 py-3">Status</th>
-              <th className="px-5 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {bookings?.map((b) => {
-              const service = b.service as { name: string; price: number } | null;
-              const staff = b.staff as { name: string } | null;
-              const customer = b.customer as { name: string; phone: string | null } | null;
-              return (
-                <tr key={b.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3">
-                    <div className="font-medium">{customer?.name}</div>
-                    {customer?.phone && <div className="text-gray-400 text-xs">{customer.phone}</div>}
-                  </td>
-                  <td className="px-5 py-3 text-gray-600">{service?.name}</td>
-                  <td className="px-5 py-3 text-gray-600">{staff?.name}</td>
-                  <td className="px-5 py-3 text-gray-600">{business ? formatDateTime(b.start_time, business.timezone) : b.start_time}</td>
-                  <td className="px-5 py-3 font-medium text-blue-700">{service ? formatCurrency(service.price) : "–"}</td>
-                  <td className="px-5 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${bookingStatusColor(b.status)}`}>
-                      {bookingStatusLabel(b.status)}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <a href={`/dashboard/bookings/${b.id}`} className="text-blue-600 hover:underline text-xs">
-                      View
-                    </a>
-                  </td>
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : bookings.length === 0 ? (
+          <div className="p-12 text-center text-gray-400">No bookings found.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 text-xs uppercase bg-gray-50">
+                  <th className="px-5 py-3">Customer</th>
+                  <th className="px-5 py-3">Service</th>
+                  <th className="px-5 py-3">Staff</th>
+                  <th className="px-5 py-3">Date & Time</th>
+                  <th className="px-5 py-3">Amount</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3">Actions</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {!bookings?.length && (
-          <div className="p-10 text-center text-gray-500">No bookings found.</div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {bookings.map((b) => {
+                  const service = b.service as { name: string; price: number } | null;
+                  const staffMember = b.staff as { name: string } | null;
+                  const customer = b.customer as { name: string; phone: string | null } | null;
+                  const actions = ACTIONS[b.status] ?? [];
+                  return (
+                    <tr key={b.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-3">
+                        <div className="font-medium text-gray-900">{customer?.name ?? "—"}</div>
+                        {customer?.phone && <div className="text-gray-400 text-xs mt-0.5">{customer.phone}</div>}
+                      </td>
+                      <td className="px-5 py-3 text-gray-600">{service?.name ?? "—"}</td>
+                      <td className="px-5 py-3 text-gray-600">{staffMember?.name ?? "—"}</td>
+                      <td className="px-5 py-3 text-gray-600">{formatDateTime(b.start_time, timezone)}</td>
+                      <td className="px-5 py-3 font-medium text-blue-700">
+                        {service ? formatCurrency(service.price) : "—"}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${bookingStatusColor(b.status)}`}>
+                          {bookingStatusLabel(b.status)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        {actions.length > 0 ? (
+                          <div className="flex items-center gap-3">
+                            {actions.map(({ label, next, color }) => (
+                              <button
+                                key={next}
+                                onClick={() => updateStatus(b.id, next)}
+                                disabled={updating === b.id + next}
+                                className={`text-xs transition-colors disabled:opacity-40 ${color}`}
+                              >
+                                {updating === b.id + next ? "..." : label}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-300 text-xs">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

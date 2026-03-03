@@ -39,9 +39,23 @@ export default function LoginPage() {
     if (userId) {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role, business_id")
+        .select("role, business_id, has_chosen_role")
         .eq("id", userId)
         .single();
+
+      // No profile means account was deleted/deactivated — sign out and block
+      if (!profile) {
+        await supabase.auth.signOut();
+        setError("Your account has been removed. Please contact support.");
+        setLoading(false);
+        return;
+      }
+
+      // New user who hasn't chosen their role yet → welcome screen
+      if (!profile.has_chosen_role) {
+        window.location.href = "/welcome";
+        return;
+      }
 
       if (profile?.role === "super_admin") {
         window.location.href = redirectTo ?? "/admin";
@@ -89,7 +103,12 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">Password</label>
+              <Link href="/forgot-password" className="text-xs text-blue-600 hover:underline">
+                Forgot password?
+              </Link>
+            </div>
             <input
               {...register("password")}
               type="password"

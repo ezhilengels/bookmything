@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { generateSlots } from "@/lib/slot-engine";
 import { slotQuerySchema } from "@/lib/validations/schemas";
 import { toZonedTime } from "date-fns-tz";
@@ -19,31 +19,35 @@ export async function GET(request: NextRequest) {
   }
 
   const { businessId, serviceId, staffId, date } = parsed.data;
-  const supabase = await createClient();
+  const supabase = await createClient();       // anon client – for public data
+  const adminSupabase = createServiceClient(); // service client – bypasses RLS for profiles
 
   // Get business timezone
-  const { data: business } = await supabase
+  const { data: business, error: bizErr } = await supabase
     .from("businesses")
     .select("timezone")
     .eq("id", businessId)
     .single();
+  console.log("[slots] business:", business, "error:", bizErr);
   if (!business) return NextResponse.json({ error: "Business not found" }, { status: 404 });
 
   // Get service duration
-  const { data: service } = await supabase
+  const { data: service, error: svcErr } = await supabase
     .from("services")
     .select("duration_minutes")
     .eq("id", serviceId)
     .single();
+  console.log("[slots] service:", service, "error:", svcErr);
   if (!service) return NextResponse.json({ error: "Service not found" }, { status: 404 });
 
   // Determine which day of week the requested date is
   const [year, month, day] = date.split("-").map(Number);
   const dateObj = new Date(year, month - 1, day);
   const dayOfWeek = getDay(dateObj);
+  console.log("[slots] date:", date, "dayOfWeek:", dayOfWeek);
 
-  // Get staff with working hours
-  let staffQuery = supabase
+  // Get staff with working hours (service client bypasses RLS on profiles)
+  let staffQuery = adminSupabase
     .from("profiles")
     .select("id, name, working_hours!inner(*)")
     .eq("business_id", businessId)
@@ -53,20 +57,21 @@ export async function GET(request: NextRequest) {
 
   if (staffId) staffQuery = staffQuery.eq("id", staffId);
 
-  const { data: staffMembers } = await staffQuery;
+  const { data: staffMembers, error: staffErr } = await staffQuery;
+  console.log("[slots] staffMembers:", JSON.stringify(staffMembers), "error:", staffErr);
 
   // Check for staff on leave
-  const { data: leaves } = await supabase
+  const { data: leaves } = await adminSupabase
     .from("staff_leaves")
     .select("staff_id")
     .eq("date", date);
   const staffOnLeave = new Set(leaves?.map((l) => l.staff_id) ?? []);
 
-  // Get existing bookings for the date
+  // Get existing bookings for the date (service client to see all bookings)
   const dayStart = new Date(year, month - 1, day, 0, 0, 0).toISOString();
   const dayEnd = new Date(year, month - 1, day, 23, 59, 59).toISOString();
 
-  const { data: existingBookings } = await supabase
+  const { data: existingBookings } = await adminSupabase
     .from("bookings")
     .select("staff_id, start_time, end_time")
     .eq("business_id", businessId)
