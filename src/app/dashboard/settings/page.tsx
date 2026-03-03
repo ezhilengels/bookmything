@@ -48,6 +48,7 @@ export default function SettingsPage() {
       setBusinessId(profile.business_id);
       const { data: biz } = await supabase.from("businesses").select("*").eq("id", profile.business_id).single();
       if (biz) {
+        const bizWithCoords = biz as typeof biz & { latitude?: number | null; longitude?: number | null };
         setBusiness(biz);
         setForm({
           name: biz.name ?? "",
@@ -57,7 +58,7 @@ export default function SettingsPage() {
           contact_email: biz.contact_email ?? "",
           timezone: biz.timezone ?? "Asia/Kolkata",
         });
-        setCoords({ lat: biz.latitude ?? null, lng: biz.longitude ?? null });
+        setCoords({ lat: bizWithCoords.latitude ?? null, lng: bizWithCoords.longitude ?? null });
       }
       setLoading(false);
     }
@@ -95,7 +96,10 @@ export default function SettingsPage() {
       if (!data || data.length === 0) { setGeoStatus("Address not found. Try a more specific address."); setGeocoding(false); return; }
       const lat = parseFloat(data[0].lat);
       const lng = parseFloat(data[0].lon);
-      const { error } = await supabase.from("businesses").update({ latitude: lat, longitude: lng }).eq("id", businessId);
+      const { error } = await supabase
+        .from("businesses")
+        .update({ latitude: lat, longitude: lng } as unknown as never)
+        .eq("id", businessId);
       if (error) { setGeoStatus("Failed to save location."); } else {
         setCoords({ lat, lng });
         setGeoStatus(`✓ Location saved! (${lat.toFixed(5)}, ${lng.toFixed(5)})`);

@@ -3,9 +3,6 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { verifyRazorpayWebhookSignature } from "@/lib/payments";
 import { sendNotification, sendNewBookingAlertToAdmin } from "@/lib/notifications";
 
-// Razorpay sends raw body; must disable Next.js body parsing for signature verification
-export const config = { api: { bodyParser: false } };
-
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
   const signature = request.headers.get("x-razorpay-signature") ?? "";

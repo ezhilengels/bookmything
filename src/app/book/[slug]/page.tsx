@@ -37,10 +37,16 @@ export default function BusinessBookingPage() {
       setServices(svcs ?? []);
 
       // Get user's location and calculate distance if business has coordinates
-      if (biz.latitude && biz.longitude && typeof navigator !== "undefined" && navigator.geolocation) {
+      const bizWithCoords = biz as typeof biz & { latitude?: number | null; longitude?: number | null };
+      if (bizWithCoords.latitude && bizWithCoords.longitude && typeof navigator !== "undefined" && navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
-            const km = haversineKm(pos.coords.latitude, pos.coords.longitude, biz.latitude, biz.longitude);
+            const km = haversineKm(
+              pos.coords.latitude,
+              pos.coords.longitude,
+              bizWithCoords.latitude as number,
+              bizWithCoords.longitude as number
+            );
             setDistance(formatDistance(km));
           },
           () => { /* silently ignore if denied */ }

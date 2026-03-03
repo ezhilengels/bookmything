@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { createBookingSchema } from "@/lib/validations/schemas";
 import { addMinutes, parseISO } from "date-fns";
+import type { BookingStatus } from "@/types";
+
+const VALID_BOOKING_STATUSES: BookingStatus[] = ["new", "confirmed", "completed", "cancelled", "no_show"];
+
+function isBookingStatus(value: string): value is BookingStatus {
+  return (VALID_BOOKING_STATUSES as string[]).includes(value);
+}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -109,7 +116,7 @@ export async function GET(request: NextRequest) {
     query = query.eq("staff_id", user.id);
   }
 
-  if (statusParam) {
+  if (statusParam && isBookingStatus(statusParam)) {
     query = query.eq("status", statusParam);
   }
 
