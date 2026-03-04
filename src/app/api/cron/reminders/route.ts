@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { sendNotification } from "@/lib/notifications";
-import { safeCompare } from "@/lib/security";
+import { safeCompare } from "@/lib/security.server";
 import { addHours, addMinutes, subMinutes } from "date-fns";
 
 // Cron runs every 15 minutes; we look for bookings due in T+24h and T+1h windows

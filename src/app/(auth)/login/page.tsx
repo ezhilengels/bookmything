@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 function LoginPageContent() {
   const searchParams = useSearchParams();
   // Validate redirect destination — only allow internal paths to prevent open-redirect attacks
-  const redirectTo = safeRedirectPath(searchParams.get("redirectTo"), "");
+  const redirectTo = safeRedirectPath(searchParams.get("redirectTo"), "").trim();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,13 +62,13 @@ function LoginPageContent() {
       }
 
       if (profile?.role === "super_admin") {
-        window.location.href = redirectTo ?? "/admin";
+        window.location.href = redirectTo || "/admin";
       } else if (profile?.role === "business_admin") {
-        window.location.href = redirectTo ?? (profile.business_id ? "/dashboard" : "/onboarding");
+        window.location.href = redirectTo || (profile.business_id ? "/dashboard" : "/onboarding");
       } else if (profile?.role === "staff") {
-        window.location.href = redirectTo ?? "/staff";
+        window.location.href = redirectTo || "/staff";
       } else {
-        window.location.href = redirectTo ?? "/customer/bookings";
+        window.location.href = redirectTo || "/customer/bookings";
       }
     }
   }
