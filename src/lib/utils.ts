@@ -44,11 +44,11 @@ export function bookingStatusLabel(status: BookingStatus): string {
 
 export function bookingStatusColor(status: BookingStatus): string {
   const colors: Record<BookingStatus, string> = {
-    new: "bg-yellow-100 text-yellow-800",
-    confirmed: "bg-blue-100 text-blue-800",
-    completed: "bg-green-100 text-green-800",
-    cancelled: "bg-red-100 text-red-800",
-    no_show: "bg-gray-100 text-gray-800",
+    new: "bg-yellow-100 text-yellow-800 dark:bg-amber-400/20 dark:text-amber-200 dark:ring-1 dark:ring-amber-300/30",
+    confirmed: "bg-blue-100 text-blue-800 dark:bg-sky-400/20 dark:text-sky-200 dark:ring-1 dark:ring-sky-300/30",
+    completed: "bg-green-100 text-green-800 dark:bg-emerald-400/20 dark:text-emerald-200 dark:ring-1 dark:ring-emerald-300/30",
+    cancelled: "bg-red-100 text-red-800 dark:bg-rose-400/20 dark:text-rose-200 dark:ring-1 dark:ring-rose-300/30",
+    no_show: "bg-gray-100 text-gray-800 dark:bg-slate-300/20 dark:text-slate-200 dark:ring-1 dark:ring-slate-300/30",
   };
   return colors[status];
 }

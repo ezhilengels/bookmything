@@ -86,50 +86,74 @@ export default function DashboardPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">Here&apos;s what&apos;s happening with your business</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Dashboard</h1>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Here&apos;s what&apos;s happening with your business</p>
       </div>
 
       {/* Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
         {statCards.map(({ label, value, icon: Icon, color, bg }) => (
-          <div key={label} className="bg-white rounded-xl p-5 shadow-sm">
+          <div key={label} className="bg-white dark:bg-slate-800 border border-transparent dark:border-slate-700 rounded-xl p-4 sm:p-5 shadow-sm">
             <div className={`w-9 h-9 ${bg} rounded-lg flex items-center justify-center mb-3`}>
               <Icon className={`w-5 h-5 ${color}`} />
             </div>
-            <p className="text-xs text-gray-500 mb-1">{label}</p>
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">{label}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">{value}</p>
           </div>
         ))}
       </div>
 
       {/* Recent Bookings */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">Recent Bookings</h2>
+      <div className="bg-white dark:bg-slate-800 border border-transparent dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900 dark:text-slate-100">Recent Bookings</h2>
           <Link href="/dashboard/bookings" className="text-xs text-blue-600 hover:underline">View all →</Link>
         </div>
         {recentBookings.length === 0 ? (
           <div className="p-10 text-center">
-            <p className="text-gray-400 text-sm">No bookings yet. Share your booking link to get started!</p>
+            <p className="text-gray-400 dark:text-slate-500 text-sm">No bookings yet. Share your booking link to get started!</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <>
+            <div className="md:hidden p-3 space-y-2">
+              {recentBookings.map((b) => (
+                <div key={b.id} className="rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-3 bg-white dark:bg-slate-800">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium text-gray-900 dark:text-slate-100 min-w-0 break-words">{(b.customer as any)?.name ?? "—"}</p>
+                    <span className={`px-2 py-1 rounded-full text-[11px] font-medium whitespace-nowrap ${bookingStatusColor(b.status)}`}>
+                      {bookingStatusLabel(b.status)}
+                    </span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-lg bg-gray-50 dark:bg-slate-700 px-2.5 py-2 min-w-0">
+                      <p className="text-[10px] font-semibold tracking-wide text-gray-500 uppercase">Service</p>
+                      <p className="mt-0.5 text-gray-700 dark:text-slate-200 truncate">{(b.service as any)?.name ?? "—"}</p>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 dark:bg-slate-700 px-2.5 py-2">
+                      <p className="text-[10px] font-semibold tracking-wide text-gray-500 uppercase">Date & Time</p>
+                      <p className="mt-0.5 text-gray-700 dark:text-slate-200">{formatDateTime(b.start_time, timezone)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 text-xs uppercase bg-gray-50">
+                <tr className="text-left text-gray-500 dark:text-slate-300 text-xs uppercase bg-gray-50 dark:bg-slate-700">
                   <th className="px-5 py-3">Customer</th>
                   <th className="px-5 py-3">Service</th>
                   <th className="px-5 py-3">Date & Time</th>
                   <th className="px-5 py-3">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                 {recentBookings.map((b) => (
-                  <tr key={b.id} className="hover:bg-gray-50">
-                    <td className="px-5 py-3 font-medium text-gray-900">{(b.customer as any)?.name ?? "—"}</td>
-                    <td className="px-5 py-3 text-gray-600">{(b.service as any)?.name ?? "—"}</td>
-                    <td className="px-5 py-3 text-gray-600">{formatDateTime(b.start_time, timezone)}</td>
+                  <tr key={b.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/60">
+                    <td className="px-5 py-3 font-medium text-gray-900 dark:text-slate-100">{(b.customer as any)?.name ?? "—"}</td>
+                    <td className="px-5 py-3 text-gray-600 dark:text-slate-300">{(b.service as any)?.name ?? "—"}</td>
+                    <td className="px-5 py-3 text-gray-600 dark:text-slate-300">{formatDateTime(b.start_time, timezone)}</td>
                     <td className="px-5 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${bookingStatusColor(b.status)}`}>
                         {bookingStatusLabel(b.status)}
@@ -138,8 +162,9 @@ export default function DashboardPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

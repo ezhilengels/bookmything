@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, haversineKm, formatDistance } from "@/lib/utils";
-import { Clock, MapPin, Phone, Mail, Navigation } from "lucide-react";
+import { Clock, MapPin, Phone, Mail, Navigation, ArrowLeft } from "lucide-react";
 
 export default function BusinessBookingPage() {
   const { slug } = useParams<{ slug: string }>();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [business, setBusiness] = useState<any>(null);
   const [services, setServices] = useState<any[]>([]);
@@ -78,6 +79,14 @@ export default function BusinessBookingPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-8">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="mb-4 inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-700 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
           <div className="flex items-start gap-5">
             {business.logo_url ? (
               <img src={business.logo_url} alt={business.name} className="w-16 h-16 rounded-2xl object-cover flex-shrink-0" />

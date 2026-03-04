@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { LayoutDashboard, Building2, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, Building2, Users, LogOut, Menu, X } from "lucide-react";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -15,6 +15,7 @@ const NAV = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [displayName, setDisplayName] = useState("Admin");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -39,19 +40,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     load();
   }, []);
 
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
   async function signOut() {
     await supabase.auth.signOut();
     window.location.href = "/login";
   }
 
-  return (
-    <div className="min-h-screen flex bg-gray-50">
-      <aside className="w-64 bg-white border-r flex flex-col">
-        <div className="p-6 border-b">
-          <span className="text-xl font-bold text-blue-700">BookMyThing</span>
-          <div className="mt-1 text-xs text-orange-600 font-semibold uppercase tracking-wide">
-            Super Admin
+  function SidebarContent({ mobile = false }: { mobile?: boolean }) {
+    return (
+      <>
+        <div className="p-6 border-b flex items-center justify-between">
+          <div>
+            <span className="text-xl font-bold text-blue-700">BookMyThing</span>
+            <div className="mt-1 text-xs text-orange-600 font-semibold uppercase tracking-wide">
+              Super Admin
+            </div>
           </div>
+          {mobile && (
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              className="md:hidden p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
         <nav className="flex-1 p-4 space-y-1">
           {NAV.map(({ href, label, icon: Icon }) => {
@@ -81,10 +98,44 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <LogOut className="w-4 h-4" /> Sign Out
           </button>
         </div>
+      </>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex bg-gray-50 relative">
+      <aside className="hidden md:flex w-64 bg-white border-r flex-col">
+        <SidebarContent />
       </aside>
 
-      <main className="flex-1 overflow-auto">
-        <div className="p-8">{children}</div>
+      {sidebarOpen && (
+        <>
+          <button
+            type="button"
+            aria-label="Close menu overlay"
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 bg-black/30 z-40 md:hidden"
+          />
+          <aside className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-white border-r z-50 flex flex-col md:hidden">
+            <SidebarContent mobile />
+          </aside>
+        </>
+      )}
+
+      <main className="flex-1 min-w-0 overflow-auto">
+        <div className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <span className="text-sm font-semibold text-blue-700">BookMyThing Admin</span>
+          <div className="w-9" />
+        </div>
+        <div className="p-4 md:p-8">{children}</div>
       </main>
     </div>
   );
