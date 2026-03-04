@@ -75,7 +75,7 @@ function RegisterPageContent() {
           <h1 className="text-2xl font-bold text-blue-700 mb-1">BookMyThing</h1>
           {isStaffInvite ? (
             <div className="mt-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-              <p className="text-green-800 text-sm font-medium">👋 You've been invited as staff!</p>
+              <p className="text-green-800 text-sm font-medium">👋 You&apos;ve been invited as staff!</p>
               <p className="text-green-600 text-xs mt-0.5">Create an account to join your team.</p>
             </div>
           ) : (

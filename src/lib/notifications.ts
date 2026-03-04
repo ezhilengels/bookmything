@@ -2,6 +2,7 @@ import { Resend } from "resend";
 import { format, parseISO } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import type { BookingWithDetails, Business, NotificationType } from "@/types";
+import { escapeHtml } from "@/lib/security";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.EMAIL_FROM ?? "noreply@bookmything.com";
@@ -18,19 +19,19 @@ function bookingConfirmationHtml(booking: BookingWithDetails, business: Business
   const time = formatApptTime(booking.start_time, business.timezone);
   return `
     <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px;">
-      <h1 style="color:#1a1a1a;">${business.name}</h1>
+      <h1 style="color:#1a1a1a;">${escapeHtml(business.name)}</h1>
       <h2 style="color:#333;">Booking Confirmed ✅</h2>
-      <p>Hi <strong>${booking.customer.name}</strong>,</p>
+      <p>Hi <strong>${escapeHtml(booking.customer.name)}</strong>,</p>
       <p>Your appointment has been confirmed. Here are the details:</p>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-        <tr><td style="padding:8px;color:#666;">Service</td><td style="padding:8px;font-weight:bold;">${booking.service.name}</td></tr>
-        <tr style="background:#f9f9f9;"><td style="padding:8px;color:#666;">Date & Time</td><td style="padding:8px;font-weight:bold;">${time}</td></tr>
-        <tr><td style="padding:8px;color:#666;">Staff</td><td style="padding:8px;font-weight:bold;">${booking.staff.name}</td></tr>
-        <tr style="background:#f9f9f9;"><td style="padding:8px;color:#666;">Booking Ref</td><td style="padding:8px;font-family:monospace;">${booking.id.slice(0, 8).toUpperCase()}</td></tr>
+        <tr><td style="padding:8px;color:#666;">Service</td><td style="padding:8px;font-weight:bold;">${escapeHtml(booking.service.name)}</td></tr>
+        <tr style="background:#f9f9f9;"><td style="padding:8px;color:#666;">Date &amp; Time</td><td style="padding:8px;font-weight:bold;">${escapeHtml(time)}</td></tr>
+        <tr><td style="padding:8px;color:#666;">Staff</td><td style="padding:8px;font-weight:bold;">${escapeHtml(booking.staff.name)}</td></tr>
+        <tr style="background:#f9f9f9;"><td style="padding:8px;color:#666;">Booking Ref</td><td style="padding:8px;font-family:monospace;">${escapeHtml(booking.id.slice(0, 8).toUpperCase())}</td></tr>
       </table>
       <p style="color:#666;font-size:0.9em;">To cancel or reschedule, please do so more than 24 hours before your appointment.</p>
       <hr style="margin:24px 0;border:none;border-top:1px solid #eee;"/>
-      <p style="color:#aaa;font-size:0.8em;">BookMyThing · ${business.contact_email}</p>
+      <p style="color:#aaa;font-size:0.8em;">BookMyThing · ${escapeHtml(business.contact_email)}</p>
     </div>
   `;
 }
@@ -39,18 +40,18 @@ function reminderHtml(booking: BookingWithDetails, business: Business, hoursAhea
   const time = formatApptTime(booking.start_time, business.timezone);
   return `
     <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px;">
-      <h1 style="color:#1a1a1a;">${business.name}</h1>
+      <h1 style="color:#1a1a1a;">${escapeHtml(business.name)}</h1>
       <h2 style="color:#333;">Reminder: Appointment in ${hoursAhead} hour${hoursAhead > 1 ? "s" : ""} ⏰</h2>
-      <p>Hi <strong>${booking.customer.name}</strong>,</p>
+      <p>Hi <strong>${escapeHtml(booking.customer.name)}</strong>,</p>
       <p>This is a friendly reminder about your upcoming appointment:</p>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-        <tr><td style="padding:8px;color:#666;">Service</td><td style="padding:8px;font-weight:bold;">${booking.service.name}</td></tr>
-        <tr style="background:#f9f9f9;"><td style="padding:8px;color:#666;">Date & Time</td><td style="padding:8px;font-weight:bold;">${time}</td></tr>
-        <tr><td style="padding:8px;color:#666;">Staff</td><td style="padding:8px;font-weight:bold;">${booking.staff.name}</td></tr>
+        <tr><td style="padding:8px;color:#666;">Service</td><td style="padding:8px;font-weight:bold;">${escapeHtml(booking.service.name)}</td></tr>
+        <tr style="background:#f9f9f9;"><td style="padding:8px;color:#666;">Date &amp; Time</td><td style="padding:8px;font-weight:bold;">${escapeHtml(time)}</td></tr>
+        <tr><td style="padding:8px;color:#666;">Staff</td><td style="padding:8px;font-weight:bold;">${escapeHtml(booking.staff.name)}</td></tr>
       </table>
       <p style="color:#666;font-size:0.9em;">We look forward to seeing you!</p>
       <hr style="margin:24px 0;border:none;border-top:1px solid #eee;"/>
-      <p style="color:#aaa;font-size:0.8em;">BookMyThing · ${business.contact_email}</p>
+      <p style="color:#aaa;font-size:0.8em;">BookMyThing · ${escapeHtml(business.contact_email)}</p>
     </div>
   `;
 }
@@ -59,18 +60,18 @@ function cancellationHtml(booking: BookingWithDetails, business: Business): stri
   const time = formatApptTime(booking.start_time, business.timezone);
   return `
     <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px;">
-      <h1 style="color:#1a1a1a;">${business.name}</h1>
+      <h1 style="color:#1a1a1a;">${escapeHtml(business.name)}</h1>
       <h2 style="color:#c0392b;">Booking Cancelled</h2>
-      <p>Hi <strong>${booking.customer.name}</strong>,</p>
+      <p>Hi <strong>${escapeHtml(booking.customer.name)}</strong>,</p>
       <p>Your appointment has been cancelled.</p>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-        <tr><td style="padding:8px;color:#666;">Service</td><td style="padding:8px;">${booking.service.name}</td></tr>
-        <tr style="background:#f9f9f9;"><td style="padding:8px;color:#666;">Was scheduled for</td><td style="padding:8px;">${time}</td></tr>
-        ${booking.cancellation_reason ? `<tr><td style="padding:8px;color:#666;">Reason</td><td style="padding:8px;">${booking.cancellation_reason}</td></tr>` : ""}
+        <tr><td style="padding:8px;color:#666;">Service</td><td style="padding:8px;">${escapeHtml(booking.service.name)}</td></tr>
+        <tr style="background:#f9f9f9;"><td style="padding:8px;color:#666;">Was scheduled for</td><td style="padding:8px;">${escapeHtml(time)}</td></tr>
+        ${booking.cancellation_reason ? `<tr><td style="padding:8px;color:#666;">Reason</td><td style="padding:8px;">${escapeHtml(booking.cancellation_reason)}</td></tr>` : ""}
       </table>
       <p style="color:#666;font-size:0.9em;">You can book a new appointment at any time.</p>
       <hr style="margin:24px 0;border:none;border-top:1px solid #eee;"/>
-      <p style="color:#aaa;font-size:0.8em;">BookMyThing · ${business.contact_email}</p>
+      <p style="color:#aaa;font-size:0.8em;">BookMyThing · ${escapeHtml(business.contact_email)}</p>
     </div>
   `;
 }
@@ -139,11 +140,11 @@ export async function sendNewBookingAlertToAdmin(
     html: `
       <div style="font-family:sans-serif;padding:24px;">
         <h2>New Booking Received</h2>
-        <p><strong>Customer:</strong> ${booking.customer.name}</p>
-        <p><strong>Service:</strong> ${booking.service.name}</p>
-        <p><strong>Staff:</strong> ${booking.staff.name}</p>
-        <p><strong>Time:</strong> ${time}</p>
-        <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/bookings/${booking.id}">View Booking</a></p>
+        <p><strong>Customer:</strong> ${escapeHtml(booking.customer.name)}</p>
+        <p><strong>Service:</strong> ${escapeHtml(booking.service.name)}</p>
+        <p><strong>Staff:</strong> ${escapeHtml(booking.staff.name)}</p>
+        <p><strong>Time:</strong> ${escapeHtml(time)}</p>
+        <p><a href="${escapeHtml(process.env.NEXT_PUBLIC_APP_URL ?? "")}/dashboard/bookings/${escapeHtml(booking.id)}">View Booking</a></p>
       </div>
     `,
   });

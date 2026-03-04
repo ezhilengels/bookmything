@@ -102,11 +102,15 @@ export async function GET(request: NextRequest) {
   // Use service client so profile joins (customer/staff names) are not blocked by RLS
   const adminSupabase = createServiceClient();
   const statusParam = request.nextUrl.searchParams.get("status");
+  const pageParam = parseInt(request.nextUrl.searchParams.get("page") ?? "1", 10);
+  const limitParam = Math.min(parseInt(request.nextUrl.searchParams.get("limit") ?? "50", 10), 200);
+  const offset = (pageParam - 1) * limitParam;
 
   let query = adminSupabase
     .from("bookings")
     .select("*, service:services(name,price), staff:profiles!bookings_staff_id_fkey(name), customer:profiles!bookings_customer_id_fkey(name,phone)")
-    .order("start_time", { ascending: false });
+    .order("start_time", { ascending: false })
+    .range(offset, offset + limitParam - 1);
 
   if (profile?.role === "business_admin" && profile.business_id) {
     query = query.eq("business_id", profile.business_id);
@@ -123,5 +127,8 @@ export async function GET(request: NextRequest) {
   const { data: bookings, error } = await query;
   if (error) return NextResponse.json({ error: "Failed to fetch bookings" }, { status: 500 });
 
-  return NextResponse.json({ data: bookings });
+  return NextResponse.json({
+    data: bookings,
+    pagination: { page: pageParam, limit: limitParam },
+  });
 }

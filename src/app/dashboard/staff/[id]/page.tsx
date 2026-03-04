@@ -145,7 +145,7 @@ export default function StaffDetailPage() {
       {/* First-time setup banner */}
       {isFirstSetup && (
         <div className="mb-5 bg-green-50 border border-green-200 rounded-xl p-4">
-          <p className="text-green-800 font-semibold text-sm">👋 Welcome! Let's set up your profile.</p>
+          <p className="text-green-800 font-semibold text-sm">👋 Welcome! Let&apos;s set up your profile.</p>
           <p className="text-green-700 text-xs mt-1">
             Assign yourself to the services you provide, then set your working hours and hit <strong>Save Schedule</strong>. Your availability will be live immediately.
           </p>

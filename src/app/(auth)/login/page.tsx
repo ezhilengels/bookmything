@@ -7,12 +7,14 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { loginSchema, type LoginInput } from "@/lib/validations/schemas";
+import { safeRedirectPath } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 function LoginPageContent() {
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirectTo") ?? null;
+  // Validate redirect destination — only allow internal paths to prevent open-redirect attacks
+  const redirectTo = safeRedirectPath(searchParams.get("redirectTo"), "");
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

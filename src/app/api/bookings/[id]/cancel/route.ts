@@ -23,7 +23,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
   const { data: profile } = await supabase.from("profiles").select("role, business_id").eq("id", user.id).single();
 
-  // Enforce 24h rule for customers
+  // Enforce 24h rule for customers; enforce business scope for business admins
   const isAdmin = ["business_admin", "super_admin"].includes(profile?.role ?? "");
   if (!isAdmin) {
     if (booking.customer_id !== user.id) {
@@ -33,6 +33,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({
         error: "Cancellations are not allowed within 24 hours of the appointment."
       }, { status: 422 });
+    }
+  } else if (profile?.role === "business_admin") {
+    // Business admins can only cancel bookings that belong to their own business
+    if (booking.business_id !== profile.business_id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
 

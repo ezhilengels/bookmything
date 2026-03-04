@@ -3,11 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(request: NextRequest) {
   const { email, password } = await request.json();
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.json({ error: "Server misconfiguration: missing Supabase env vars" }, { status: 500 });
+  }
 
   // Sign in directly via Supabase REST API (no SDK dependency)
-  let signInData: any;
+  let signInData: { access_token: string; refresh_token: string; expires_in: number; user: { id: string } };
   try {
     const signInRes = await fetch(
       `${supabaseUrl}/auth/v1/token?grant_type=password`,
@@ -31,9 +35,9 @@ export async function POST(request: NextRequest) {
     }
 
     signInData = await signInRes.json();
-  } catch (e: any) {
+  } catch {
     return NextResponse.json(
-      { error: `Cannot reach auth server: ${e?.message ?? e}` },
+      { error: "Authentication service unavailable. Please try again later." },
       { status: 500 }
     );
   }
@@ -87,7 +91,7 @@ export async function POST(request: NextRequest) {
     path: "/",
     sameSite: "lax" as const,
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
     maxAge: expires_in,
   };
 

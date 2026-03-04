@@ -23,28 +23,34 @@ export async function GET(request: NextRequest) {
   const adminSupabase = createServiceClient(); // service client – bypasses RLS for profiles
 
   // Get business timezone
-  const { data: business, error: bizErr } = await supabase
+  const { data: business } = await supabase
     .from("businesses")
     .select("timezone")
     .eq("id", businessId)
     .single();
-  console.log("[slots] business:", business, "error:", bizErr);
   if (!business) return NextResponse.json({ error: "Business not found" }, { status: 404 });
 
   // Get service duration
-  const { data: service, error: svcErr } = await supabase
+  const { data: service } = await supabase
     .from("services")
     .select("duration_minutes")
     .eq("id", serviceId)
     .single();
-  console.log("[slots] service:", service, "error:", svcErr);
   if (!service) return NextResponse.json({ error: "Service not found" }, { status: 404 });
 
   // Determine which day of week the requested date is
   const [year, month, day] = date.split("-").map(Number);
   const dateObj = new Date(year, month - 1, day);
+  // Validate the date is a real calendar date (rejects e.g. 2025-02-30)
+  if (
+    isNaN(dateObj.getTime()) ||
+    dateObj.getFullYear() !== year ||
+    dateObj.getMonth() !== month - 1 ||
+    dateObj.getDate() !== day
+  ) {
+    return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+  }
   const dayOfWeek = getDay(dateObj);
-  console.log("[slots] date:", date, "dayOfWeek:", dayOfWeek);
 
   // Get staff with working hours (service client bypasses RLS on profiles)
   let staffQuery = adminSupabase
@@ -57,8 +63,7 @@ export async function GET(request: NextRequest) {
 
   if (staffId) staffQuery = staffQuery.eq("id", staffId);
 
-  const { data: staffMembers, error: staffErr } = await staffQuery;
-  console.log("[slots] staffMembers:", JSON.stringify(staffMembers), "error:", staffErr);
+  const { data: staffMembers } = await staffQuery;
 
   // Check for staff on leave
   const { data: leaves } = await adminSupabase

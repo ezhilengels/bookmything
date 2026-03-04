@@ -7,41 +7,34 @@ export default function ConfirmPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function handleStaffInvite(supabase: ReturnType<typeof createClient>) {
+    async function handleStaffInvite() {
       // Invite param is embedded in the URL (most reliable) or falls back to sessionStorage
       const urlParams = new URLSearchParams(window.location.search);
-      const inviteEncoded = urlParams.get("invite") || sessionStorage.getItem("staff_invite");
+      const inviteToken = urlParams.get("invite") || sessionStorage.getItem("staff_invite");
       sessionStorage.removeItem("staff_invite");
 
-      if (!inviteEncoded) {
+      if (!inviteToken) {
         // No invite — normal flow, go to welcome screen
         window.location.href = "/welcome";
         return;
       }
 
       try {
-        const businessId = atob(inviteEncoded);
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { window.location.href = "/welcome"; return; }
+        // Verify the HMAC-signed token server-side — never trust client-side decoding alone
+        const res = await fetch("/api/auth/accept-invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: inviteToken }),
+        });
 
-        // Assign staff role + business to this user's profile
-        const { error: updateError } = await supabase
-          .from("profiles")
-          .update({
-            role: "staff",
-            business_id: businessId,
-            has_chosen_role: true,
-          })
-          .eq("id", session.user.id);
-
-        if (updateError) {
-          console.error("Failed to assign staff role:", updateError);
+        if (!res.ok) {
+          // Token invalid or expired — fall back to normal welcome flow
           window.location.href = "/welcome";
           return;
         }
 
-        // First-time setup: send staff to their own schedule page
-        window.location.href = `/dashboard/staff/${session.user.id}?setup=true`;
+        const data = await res.json();
+        window.location.href = data.redirect ?? "/welcome";
       } catch {
         window.location.href = "/welcome";
       }
@@ -81,7 +74,7 @@ export default function ConfirmPage() {
         }
 
         // Check for staff invite stored before signup
-        await handleStaffInvite(supabase);
+        await handleStaffInvite();
         return;
       }
 
@@ -99,7 +92,7 @@ export default function ConfirmPage() {
           window.location.href = "/reset-password";
           return;
         }
-        await handleStaffInvite(supabase);
+        await handleStaffInvite();
         return;
       }
 
@@ -129,7 +122,7 @@ export default function ConfirmPage() {
       <div className="text-center">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
         <p className="text-gray-600 font-medium">Verifying your email…</p>
-        <p className="text-gray-400 text-sm mt-1">You'll be redirected shortly</p>
+        <p className="text-gray-400 text-sm mt-1">You&apos;ll be redirected shortly</p>
       </div>
     </div>
   );

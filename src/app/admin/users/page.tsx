@@ -68,13 +68,16 @@ export default function AdminUsersPage() {
 
   async function updateRole(userId: string, newRole: Role) {
     setUpdatingId(userId);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ role: newRole, has_chosen_role: true })
-      .eq("id", userId);
+    // Use server-side endpoint — enforces super_admin check server-side, not just client-side
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: newRole, has_chosen_role: true }),
+    });
 
-    if (error) {
-      alert("Failed to update role: " + error.message);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert("Failed to update role: " + (data.error ?? res.statusText));
     } else {
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole, has_chosen_role: true } : u));
     }

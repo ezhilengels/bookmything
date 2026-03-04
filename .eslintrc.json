@@ -1,0 +1,13 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "rules": {
+    "no-eval": "error",
+    "no-new-func": "error",
+    "no-implied-eval": "error",
+    "no-script-url": "error",
+    "no-console": ["warn", { "allow": ["error", "warn"] }],
+    "no-alert": "warn",
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "@next/next/no-html-link-for-pages": "error"
+  }
+}

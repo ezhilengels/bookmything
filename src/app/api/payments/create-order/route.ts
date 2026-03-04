@@ -35,10 +35,15 @@ export async function POST(request: NextRequest) {
     });
 
     // Store the Razorpay order ID on the booking
-    await supabase
+    const { error: updateError } = await supabase
       .from("bookings")
       .update({ razorpay_order_id: orderId })
       .eq("id", booking.id);
+
+    if (updateError) {
+      console.error("[create-order] failed to store order ID:", updateError.message);
+      // Non-fatal — return order ID so payment can still proceed
+    }
 
     return NextResponse.json({ orderId, amount, currency });
   } catch (err) {

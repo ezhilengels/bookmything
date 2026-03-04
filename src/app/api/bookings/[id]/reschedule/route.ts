@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { rescheduleBookingSchema } from "@/lib/validations/schemas";
 import { isWithin24Hours } from "@/lib/slot-engine";
 import { addMinutes, parseISO } from "date-fns";
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
   if (!booking) return NextResponse.json({ error: "Booking not found" }, { status: 404 });
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  const { data: profile } = await supabase.from("profiles").select("role, business_id").eq("id", user.id).single();
   const isAdmin = ["business_admin", "super_admin"].includes(profile?.role ?? "");
 
   if (!isAdmin) {
@@ -31,6 +31,25 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({
         error: "Rescheduling is not allowed within 24 hours of the appointment."
       }, { status: 422 });
+    }
+  } else if (profile?.role === "business_admin") {
+    // Business admins can only reschedule bookings for their own business
+    if (booking.business_id !== profile.business_id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
+  // If changing staff, validate the new staff belongs to the same business as the booking
+  if (parsed.data.staff_id) {
+    const adminSupabase = createServiceClient();
+    const { data: newStaff } = await adminSupabase
+      .from("profiles")
+      .select("business_id, role")
+      .eq("id", parsed.data.staff_id)
+      .single();
+
+    if (!newStaff || newStaff.role !== "staff" || newStaff.business_id !== booking.business_id) {
+      return NextResponse.json({ error: "Invalid staff selection for this booking" }, { status: 400 });
     }
   }
 
