@@ -1,13 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
+function extractBearerToken(request: NextRequest): string {
+  const authHeader = request.headers.get("authorization") ?? "";
+  if (authHeader.startsWith("Bearer ")) {
+    return authHeader.slice(7).trim();
+  }
+  const altHeader = request.headers.get("x-supabase-auth") ?? "";
+  if (altHeader.startsWith("Bearer ")) {
+    return altHeader.slice(7).trim();
+  }
+  return altHeader.trim();
+}
+
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   const supabase = await createClient();
+  const adminSupabase = createServiceClient();
+
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let userId = session?.user?.id ?? null;
+  if (!userId) {
+    const token = extractBearerToken(request);
+    if (token) {
+      const { data } = await adminSupabase.auth.getUser(token);
+      userId = data.user?.id ?? null;
+    }
+  }
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data: profile } = await supabase
-    .from("profiles").select("role, business_id").eq("id", session.user.id).single();
+    .from("profiles").select("role, business_id").eq("id", userId).single();
 
   const isAdmin = ["business_admin", "super_admin"].includes(profile?.role ?? "");
   const isStaff = profile?.role === "staff";
@@ -22,9 +44,6 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
-  // Use service client to update — bypasses RLS
-  const adminSupabase = createServiceClient();
-
   // Verify the booking belongs to this business/staff
   const { data: booking } = await adminSupabase
     .from("bookings").select("business_id, staff_id").eq("id", params.id).single();
@@ -33,7 +52,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (isAdmin && booking.business_id !== profile?.business_id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  if (isStaff && booking.staff_id !== session.user.id) {
+  if (isStaff && booking.staff_id !== userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
