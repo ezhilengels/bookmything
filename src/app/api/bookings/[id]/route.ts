@@ -28,7 +28,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: profile } = await supabase
+  const { data: profile } = await adminSupabase
     .from("profiles").select("role, business_id").eq("id", userId).single();
 
   const isAdmin = ["business_admin", "super_admin"].includes(profile?.role ?? "");
