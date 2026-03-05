@@ -10,11 +10,32 @@ function isBookingStatus(value: string): value is BookingStatus {
   return (VALID_BOOKING_STATUSES as string[]).includes(value);
 }
 
+function extractBearerToken(request: NextRequest): string {
+  const authHeader = request.headers.get("authorization") ?? "";
+  if (authHeader.startsWith("Bearer ")) {
+    return authHeader.slice(7).trim();
+  }
+  // Fallback for proxies/platforms where Authorization can be stripped.
+  const altHeader = request.headers.get("x-supabase-auth") ?? "";
+  if (altHeader.startsWith("Bearer ")) {
+    return altHeader.slice(7).trim();
+  }
+  return altHeader.trim();
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
+  const adminSupabase = createServiceClient();
 
   const { data: { session: _sess } } = await supabase.auth.getSession();
-  const user = _sess?.user ?? null;
+  let user = _sess?.user ?? null;
+  if (!user) {
+    const token = extractBearerToken(request);
+    if (token) {
+      const { data } = await adminSupabase.auth.getUser(token);
+      user = data.user ?? null;
+    }
+  }
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
@@ -25,8 +46,8 @@ export async function POST(request: NextRequest) {
 
   const { service_id, staff_id, start_time, notes } = parsed.data;
 
-  // Get service details (duration + business_id)
-  const { data: service } = await supabase
+  // Use service client for consistent behavior across web-cookie and mobile-bearer auth.
+  const { data: service } = await adminSupabase
     .from("services")
     .select("duration_minutes, business_id, price, is_active")
     .eq("id", service_id)
@@ -36,8 +57,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Service not found or inactive" }, { status: 404 });
   }
 
-  // Verify staff belongs to the same business (service client bypasses RLS on profiles)
-  const adminSupabase = createServiceClient();
   const { data: staffProfile } = await adminSupabase
     .from("profiles")
     .select("business_id, role")
@@ -51,7 +70,7 @@ export async function POST(request: NextRequest) {
   const endTime = addMinutes(parseISO(start_time), service.duration_minutes).toISOString();
 
   // Check for slot conflicts (belt-and-suspenders beyond the unique index)
-  const { data: conflict } = await supabase
+  const { data: conflict } = await adminSupabase
     .from("bookings")
     .select("id")
     .eq("staff_id", staff_id)
@@ -64,7 +83,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Create booking
-  const { data: booking, error: insertError } = await supabase
+  const { data: booking, error: insertError } = await adminSupabase
     .from("bookings")
     .insert({
       business_id: service.business_id,
@@ -85,7 +104,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "This slot was just taken. Please choose another." }, { status: 409 });
     }
     console.error("[bookings POST]", insertError);
-    return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });
+    return NextResponse.json({ error: insertError.message ?? "Failed to create booking" }, { status: 500 });
   }
 
   return NextResponse.json({ data: booking }, { status: 201 });
@@ -94,7 +113,15 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { data: { session: _sess } } = await supabase.auth.getSession();
-  const user = _sess?.user ?? null;
+  let user = _sess?.user ?? null;
+  if (!user) {
+    const token = extractBearerToken(request);
+    if (token) {
+      const adminSupabase = createServiceClient();
+      const { data } = await adminSupabase.auth.getUser(token);
+      user = data.user ?? null;
+    }
+  }
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data: profile } = await supabase.from("profiles").select("role, business_id").eq("id", user.id).single();
