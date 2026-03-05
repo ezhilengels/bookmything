@@ -11,9 +11,13 @@ import { safeRedirectPath } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
+// Shared styles for all inputs and labels on auth pages
+const inputCls =
+  "w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors";
+const labelCls = "block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1";
+
 function LoginPageContent() {
   const searchParams = useSearchParams();
-  // Validate redirect destination — only allow internal paths to prevent open-redirect attacks
   const redirectTo = safeRedirectPath(searchParams.get("redirectTo"), "").trim();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
@@ -26,19 +30,15 @@ function LoginPageContent() {
   async function onSubmit(data: LoginInput) {
     setLoading(true);
     setError(null);
-
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: data.email,
       password: data.password,
     });
-
     if (authError) {
       setError(authError.message);
       setLoading(false);
       return;
     }
-
-    // Determine destination by role (client-side — works on all networks)
     const userId = authData.user?.id;
     if (userId) {
       const { data: profile } = await supabase
@@ -46,30 +46,17 @@ function LoginPageContent() {
         .select("role, business_id, has_chosen_role")
         .eq("id", userId)
         .single();
-
-      // No profile means account was deleted/deactivated — sign out and block
       if (!profile) {
         await supabase.auth.signOut();
         setError("Your account has been removed. Please contact support.");
         setLoading(false);
         return;
       }
-
-      // New user who hasn't chosen their role yet → welcome screen
-      if (!profile.has_chosen_role) {
-        window.location.href = "/welcome";
-        return;
-      }
-
-      if (profile?.role === "super_admin") {
-        window.location.href = redirectTo || "/admin";
-      } else if (profile?.role === "business_admin") {
-        window.location.href = redirectTo || (profile.business_id ? "/dashboard" : "/onboarding");
-      } else if (profile?.role === "staff") {
-        window.location.href = redirectTo || "/staff";
-      } else {
-        window.location.href = redirectTo || "/customer/bookings";
-      }
+      if (!profile.has_chosen_role) { window.location.href = "/welcome"; return; }
+      if (profile?.role === "super_admin")        window.location.href = redirectTo || "/admin";
+      else if (profile?.role === "business_admin") window.location.href = redirectTo || (profile.business_id ? "/dashboard" : "/onboarding");
+      else if (profile?.role === "staff")          window.location.href = redirectTo || "/staff";
+      else                                         window.location.href = redirectTo || "/customer/bookings";
     }
   }
 
@@ -81,42 +68,42 @@ function LoginPageContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm p-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900 px-4">
+      <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-8">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-blue-700 mb-1">BookMyThing</h1>
-          <p className="text-gray-600">Sign in to your account</p>
+          <h1 className="text-2xl font-bold text-blue-600 mb-1">BookMyThing</h1>
+          <p className="text-gray-500 dark:text-slate-400 text-sm">Sign in to your account</p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700/50 rounded-lg text-red-700 dark:text-red-300 text-sm">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className={labelCls}>Email</label>
             <input
               {...register("email")}
               type="email"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputCls}
               placeholder="you@example.com"
             />
-            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+            {errors.email && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.email.message}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className={labelCls}>Password</label>
             <input
               {...register("password")}
               type="password"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputCls}
               placeholder="••••••••"
             />
-            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
+            {errors.password && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.password.message}</p>}
             <div className="text-right mt-1">
-              <Link href="/forgot-password" className="text-xs text-blue-600 hover:underline">
+              <Link href="/forgot-password" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
                 Forgot password?
               </Link>
             </div>
@@ -125,21 +112,21 @@ function LoginPageContent() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-medium disabled:opacity-50 transition-colors shadow-sm shadow-blue-500/30"
           >
             {loading ? "Signing in…" : "Sign In"}
           </button>
         </form>
 
-        <div className="my-4 flex items-center gap-2">
-          <div className="flex-1 border-t border-gray-200" />
-          <span className="text-xs text-gray-400">or</span>
-          <div className="flex-1 border-t border-gray-200" />
+        <div className="my-5 flex items-center gap-3">
+          <div className="flex-1 border-t border-gray-200 dark:border-slate-600" />
+          <span className="text-xs text-gray-400 dark:text-slate-500">or</span>
+          <div className="flex-1 border-t border-gray-200 dark:border-slate-600" />
         </div>
 
         <button
           onClick={signInWithGoogle}
-          className="w-full border border-gray-300 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-sm"
+          className="w-full border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-200 py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
         >
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615Z" fill="#4285F4"/>
@@ -150,9 +137,9 @@ function LoginPageContent() {
           Continue with Google
         </button>
 
-        <p className="text-center text-sm text-gray-600 mt-6">
+        <p className="text-center text-sm text-gray-500 dark:text-slate-400 mt-6">
           Don&apos;t have an account?{" "}
-          <Link href="/register" className="text-blue-600 font-medium hover:underline">
+          <Link href="/register" className="text-blue-600 dark:text-blue-400 font-medium hover:underline">
             Register
           </Link>
         </p>
@@ -165,7 +152,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900 px-4">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
         </div>
       }

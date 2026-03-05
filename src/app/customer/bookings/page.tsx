@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { CalendarDays, LogOut, Search, MapPin, ChevronRight } from "lucide-react";
+import { CalendarDays, LogOut, Search, MapPin, ChevronRight, Sun, Moon } from "lucide-react";
 
 type Tab = "browse" | "bookings";
 
@@ -49,6 +49,7 @@ export default function CustomerBookingsPage() {
   const [userName, setUserName] = useState("");
   const [locationError, setLocationError] = useState<string | null>(null);
   const [radiusKm, setRadiusKm] = useState<number | null>(null); // null = show all
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const supabase = createClient();
 
   const RADIUS_OPTIONS: { label: string; value: number | null }[] = [
@@ -58,6 +59,23 @@ export default function CustomerBookingsPage() {
     { label: "20 km", value: 20 },
     { label: "40 km", value: 40 },
   ];
+
+  // Sync dark mode from localStorage / system preference
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const isDark = saved === "dark" || (saved !== "light" && prefersDark);
+    setIsDarkMode(isDark);
+    document.documentElement.classList.toggle("dark", isDark);
+  }, []);
+
+  function toggleTheme() {
+    const next = !isDarkMode;
+    setIsDarkMode(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
+  }
 
   useEffect(() => {
     async function load() {
@@ -165,10 +183,11 @@ export default function CustomerBookingsPage() {
   }
 
   function statusColor(status: string) {
-    if (status === "confirmed") return "bg-blue-100 text-blue-700";
-    if (status === "completed") return "bg-green-100 text-green-700";
-    if (status === "cancelled") return "bg-red-100 text-red-600";
-    return "bg-yellow-100 text-yellow-700";
+    if (status === "confirmed") return "bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 dark:border dark:border-blue-600/50";
+    if (status === "completed") return "bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-300 dark:border dark:border-green-600/50";
+    if (status === "cancelled") return "bg-red-100 text-red-600 dark:bg-red-900/60 dark:text-red-300 dark:border dark:border-red-600/50";
+    if (status === "no_show") return "bg-gray-100 text-gray-600 dark:bg-gray-800/70 dark:text-gray-300 dark:border dark:border-gray-600/50";
+    return "bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300 dark:border dark:border-amber-600/50";
   }
 
   function statusLabel(status: string) {
@@ -181,22 +200,37 @@ export default function CustomerBookingsPage() {
   ).length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-10">
+      <header className="bg-white dark:bg-slate-800/95 backdrop-blur border-b border-gray-200 dark:border-slate-700 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <span className="font-bold text-blue-700 text-lg">BookMyThing</span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-blue-700 dark:text-blue-400 text-lg">BookMyThing</span>
             {userName && (
-              <span className="text-sm text-gray-500 ml-2">Hi, {userName.split(" ")[0]}! 👋</span>
+              <span className="text-sm text-gray-500 dark:text-slate-400 ml-1">Hi, {userName.split(" ")[0]}! 👋</span>
             )}
           </div>
-          <button
-            onClick={signOut}
-            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-red-500 transition-colors"
-          >
-            <LogOut className="w-4 h-4" /> Sign out
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Dark mode toggle */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                isDarkMode ? "bg-slate-700" : "bg-blue-200"
+              }`}
+              aria-label="Toggle dark mode"
+            >
+              <span className={`inline-flex h-5 w-5 transform items-center justify-center rounded-full bg-white shadow transition-transform ${isDarkMode ? "translate-x-5" : "translate-x-1"}`}>
+                {isDarkMode ? <Moon className="w-3 h-3 text-slate-600" /> : <Sun className="w-3 h-3 text-blue-500" />}
+              </span>
+            </button>
+            <button
+              onClick={signOut}
+              className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+            >
+              <LogOut className="w-4 h-4" /> Sign out
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -205,23 +239,23 @@ export default function CustomerBookingsPage() {
             onClick={() => setTab("browse")}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
               tab === "browse"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
+                ? "border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400"
+                : "border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
             }`}
           >
-            Browse & Book
+            Browse &amp; Book
           </button>
           <button
             onClick={() => setTab("bookings")}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
               tab === "bookings"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
+                ? "border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400"
+                : "border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
             }`}
           >
             My Bookings
             {upcomingCount > 0 && (
-              <span className="bg-blue-600 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+              <span className="bg-blue-600 dark:bg-blue-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
                 {upcomingCount}
               </span>
             )}
@@ -237,21 +271,21 @@ export default function CustomerBookingsPage() {
             {/* Search + Radius filter */}
             <div className="flex gap-2 mb-5">
               <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
                 <input
                   type="text"
                   placeholder="Search businesses…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl text-sm text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                 />
               </div>
               <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-blue-500 pointer-events-none" />
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-blue-500 dark:text-blue-400 pointer-events-none" />
                 <select
                   value={radiusKm ?? "all"}
                   onChange={e => setRadiusKm(e.target.value === "all" ? null : Number(e.target.value))}
-                  className="h-full pl-8 pr-7 py-3 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none text-gray-700 cursor-pointer"
+                  className="h-full pl-8 pr-7 py-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl text-sm text-gray-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 appearance-none cursor-pointer transition-colors"
                 >
                   {RADIUS_OPTIONS.map(opt => (
                     <option key={opt.label} value={opt.value ?? "all"}>
@@ -259,7 +293,7 @@ export default function CustomerBookingsPage() {
                     </option>
                   ))}
                 </select>
-                <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-slate-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
@@ -267,21 +301,22 @@ export default function CustomerBookingsPage() {
 
             {/* Location permission nudge */}
             {locationError && (
-              <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4">
+              <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/50 rounded-xl px-4 py-2.5 mb-4">
                 <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
                 {locationError}
               </div>
             )}
 
             {loading ? (
-              <div className="flex justify-center py-16">
-                <div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <div className="w-7 h-7 border-4 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-gray-400 dark:text-slate-500">Loading businesses…</p>
               </div>
             ) : filteredBiz.length === 0 ? (
-              <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
+              <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-10 text-center shadow-sm">
                 <p className="text-3xl mb-3">🔍</p>
-                <p className="text-gray-500 font-medium">No businesses found</p>
-                <p className="text-gray-400 text-sm mt-1">
+                <p className="text-gray-500 dark:text-slate-300 font-medium">No businesses found</p>
+                <p className="text-gray-400 dark:text-slate-500 text-sm mt-1">
                   {radiusKm !== null
                     ? `No businesses within ${radiusKm} km — try a wider range`
                     : "Try a different search term"}
@@ -289,7 +324,7 @@ export default function CustomerBookingsPage() {
                 {radiusKm !== null && (
                   <button
                     onClick={() => setRadiusKm(null)}
-                    className="mt-3 text-xs text-blue-600 hover:underline"
+                    className="mt-3 text-xs text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     Show all distances
                   </button>
@@ -301,35 +336,35 @@ export default function CustomerBookingsPage() {
                   <a
                     key={biz.id}
                     href={`/book/${biz.slug}`}
-                    className="flex items-center gap-4 bg-white rounded-2xl p-5 shadow-sm hover:shadow-md transition-all border-2 border-transparent hover:border-blue-500 group"
+                    className="flex items-center gap-4 bg-white dark:bg-slate-800 border-2 border-transparent dark:border-slate-700 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-blue-500 dark:hover:border-blue-500 transition-all group"
                   >
                     {/* Avatar */}
-                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-lg flex-shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold text-lg flex-shrink-0">
                       {biz.name.charAt(0).toUpperCase()}
                     </div>
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
+                        <p className="font-semibold text-gray-900 dark:text-slate-100 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
                           {biz.name}
                         </p>
                         {biz.distance != null && (
-                          <span className="flex items-center gap-0.5 text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-medium flex-shrink-0">
+                          <span className="flex items-center gap-0.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 px-2 py-0.5 rounded-full font-medium flex-shrink-0">
                             <MapPin className="w-3 h-3" />
                             {formatDistance(biz.distance)}
                           </span>
                         )}
                       </div>
                       {biz.description && (
-                        <p className="text-gray-500 text-sm mt-0.5 truncate">{biz.description}</p>
+                        <p className="text-gray-500 dark:text-slate-400 text-sm mt-0.5 truncate">{biz.description}</p>
                       )}
                       {biz.address && (
-                        <p className="text-gray-400 text-xs mt-1 flex items-center gap-1">
+                        <p className="text-gray-400 dark:text-slate-500 text-xs mt-1 flex items-center gap-1">
                           <MapPin className="w-3 h-3" />{biz.address}
                         </p>
                       )}
                     </div>
-                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-blue-500 flex-shrink-0" />
+                    <ChevronRight className="w-5 h-5 text-gray-300 dark:text-slate-600 group-hover:text-blue-500 dark:group-hover:text-blue-400 flex-shrink-0 transition-colors" />
                   </a>
                 ))}
               </div>
@@ -341,17 +376,20 @@ export default function CustomerBookingsPage() {
         {tab === "bookings" && (
           <div>
             {loading ? (
-              <div className="flex justify-center py-16">
-                <div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <div className="w-7 h-7 border-4 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-gray-400 dark:text-slate-500">Loading bookings…</p>
               </div>
             ) : bookings.length === 0 ? (
-              <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
-                <CalendarDays className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                <p className="text-gray-500 font-medium">No bookings yet</p>
-                <p className="text-gray-400 text-sm mt-1 mb-5">Find a business and book your first appointment!</p>
+              <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-10 text-center shadow-sm">
+                <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-900/30 mx-auto mb-4">
+                  <CalendarDays className="w-8 h-8 text-blue-300 dark:text-blue-600" />
+                </div>
+                <p className="text-gray-500 dark:text-slate-300 font-medium">No bookings yet</p>
+                <p className="text-gray-400 dark:text-slate-500 text-sm mt-1 mb-5">Find a business and book your first appointment!</p>
                 <button
                   onClick={() => setTab("browse")}
-                  className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors"
                 >
                   Browse Businesses
                 </button>
@@ -364,48 +402,61 @@ export default function CustomerBookingsPage() {
                   const business = b.business as { name: string; timezone: string; slug: string } | null;
                   const canModify = new Date(b.start_time).getTime() - Date.now() > 24 * 60 * 60 * 1000;
                   const isPast = new Date(b.start_time) < new Date();
+
+                  // Status-based accent strip color
+                  const accentColor =
+                    b.status === "confirmed" ? "bg-blue-500" :
+                    b.status === "completed" ? "bg-emerald-500" :
+                    b.status === "cancelled" ? "bg-red-400" :
+                    b.status === "no_show" ? "bg-gray-400" :
+                    "bg-amber-400";
+
                   return (
                     <div
                       key={b.id}
-                      className={`bg-white rounded-2xl p-5 shadow-sm ${isPast ? "opacity-70" : ""}`}
+                      className={`bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden transition-opacity ${isPast ? "opacity-70" : ""}`}
                     >
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <p className="font-semibold text-gray-900">{service?.name}</p>
-                          <p className="text-blue-600 text-sm font-medium">{business?.name}</p>
+                      {/* Accent strip */}
+                      <div className={`h-0.5 w-full ${accentColor}`} />
+                      <div className="p-5">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <p className="font-semibold text-gray-900 dark:text-slate-100">{service?.name}</p>
+                            <p className="text-blue-600 dark:text-blue-400 text-sm font-medium">{business?.name}</p>
+                          </div>
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColor(b.status)}`}>
+                            {statusLabel(b.status)}
+                          </span>
                         </div>
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColor(b.status)}`}>
-                          {statusLabel(b.status)}
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-600 space-y-1.5">
-                        <p className="flex items-center gap-2">
-                          <CalendarDays className="w-4 h-4 text-gray-400" />
-                          {business ? formatDateTime(b.start_time, business.timezone) : b.start_time}
-                        </p>
-                        {staff?.name && (
-                          <p className="text-gray-500 text-xs">with {staff.name}</p>
+                        <div className="text-sm text-gray-600 dark:text-slate-400 space-y-1.5">
+                          <p className="flex items-center gap-2">
+                            <CalendarDays className="w-4 h-4 text-gray-400 dark:text-slate-500" />
+                            {business ? formatDateTime(b.start_time, business.timezone) : b.start_time}
+                          </p>
+                          {staff?.name && (
+                            <p className="text-gray-500 dark:text-slate-500 text-xs">with {staff.name}</p>
+                          )}
+                          <p className="font-semibold text-gray-900 dark:text-slate-100">₹{service?.price ?? "—"}</p>
+                        </div>
+                        {canModify && b.status === "confirmed" && (
+                          <div className="flex gap-3 mt-4 pt-3 border-t border-gray-100 dark:border-slate-700">
+                            <a href={`/customer/bookings/${b.id}/reschedule`} className="text-blue-600 dark:text-blue-400 text-xs font-medium hover:underline">
+                              Reschedule
+                            </a>
+                            <a href={`/customer/bookings/${b.id}/cancel`} className="text-red-500 dark:text-red-400 text-xs font-medium hover:underline">
+                              Cancel
+                            </a>
+                          </div>
                         )}
-                        <p className="font-semibold text-gray-900">₹{service?.price ?? "—"}</p>
+                        {business && (
+                          <a
+                            href={`/book/${business.slug}`}
+                            className="mt-3 block text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                          >
+                            Book again →
+                          </a>
+                        )}
                       </div>
-                      {canModify && b.status === "confirmed" && (
-                        <div className="flex gap-3 mt-4 pt-3 border-t border-gray-100">
-                          <a href={`/customer/bookings/${b.id}/reschedule`} className="text-blue-600 text-xs font-medium hover:underline">
-                            Reschedule
-                          </a>
-                          <a href={`/customer/bookings/${b.id}/cancel`} className="text-red-500 text-xs font-medium hover:underline">
-                            Cancel
-                          </a>
-                        </div>
-                      )}
-                      {business && (
-                        <a
-                          href={`/book/${business.slug}`}
-                          className="mt-3 block text-xs text-blue-600 hover:underline"
-                        >
-                          Book again →
-                        </a>
-                      )}
                     </div>
                   );
                 })}

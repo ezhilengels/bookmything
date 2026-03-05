@@ -6,6 +6,15 @@ const config: Config = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/lib/**/*.{js,ts,jsx,tsx}",
+  ],
+  safelist: [
+    // Booking status badge colors — dark mode
+    "dark:bg-amber-900/70", "dark:text-amber-300", "dark:border-amber-500/60",
+    "dark:bg-blue-900/70",  "dark:text-blue-300",  "dark:border-blue-500/60",
+    "dark:bg-green-900/70", "dark:text-green-300", "dark:border-green-500/60",
+    "dark:bg-red-900/70",   "dark:text-red-300",   "dark:border-red-500/60",
+    "dark:bg-gray-800/70",  "dark:text-gray-300",  "dark:border-gray-500/60",
   ],
   theme: {
     extend: {

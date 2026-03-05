@@ -51,6 +51,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const isDark = saved === "dark" || (saved !== "light" && prefersDark);
     setIsDarkMode(isDark);
+    // Sync the DOM class so dark styles apply immediately on load
+    document.documentElement.classList.toggle("dark", isDark);
   }, []);
 
   async function signOut() {
