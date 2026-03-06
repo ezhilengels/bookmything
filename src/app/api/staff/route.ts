@@ -1,16 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
+function extractBearerToken(request: NextRequest): string {
+  const authHeader = request.headers.get("authorization") ?? "";
+  if (authHeader.startsWith("Bearer ")) {
+    return authHeader.slice(7).trim();
+  }
+  const altHeader = request.headers.get("x-supabase-auth") ?? "";
+  if (altHeader.startsWith("Bearer ")) {
+    return altHeader.slice(7).trim();
+  }
+  return altHeader.trim();
+}
+
 export async function POST(request: NextRequest) {
   // Verify caller is a business_admin
   const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const adminSupabase = createServiceClient();
 
-  const { data: caller } = await supabase
+  const { data: { session } } = await supabase.auth.getSession();
+  let userId = session?.user?.id ?? null;
+  if (!userId) {
+    const token = extractBearerToken(request);
+    if (token) {
+      const { data } = await adminSupabase.auth.getUser(token);
+      userId = data.user?.id ?? null;
+    }
+  }
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: caller } = await adminSupabase
     .from("profiles")
     .select("role, business_id")
-    .eq("id", session.user.id)
+    .eq("id", userId)
     .single();
 
   if (caller?.role !== "business_admin" || !caller.business_id) {
@@ -22,7 +44,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Name, email and password are required" }, { status: 400 });
   }
 
-  const adminSupabase = createServiceClient();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
