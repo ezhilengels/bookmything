@@ -55,9 +55,10 @@ export async function GET(request: NextRequest) {
   // Get staff with working hours (service client bypasses RLS on profiles)
   let staffQuery = adminSupabase
     .from("profiles")
-    .select("id, name, working_hours!inner(*)")
+    .select("id, name, working_hours!inner(*), staff_services!inner(service_id)")
     .eq("business_id", businessId)
     .eq("role", "staff")
+    .eq("staff_services.service_id", serviceId)
     .eq("working_hours.day_of_week", dayOfWeek)
     .eq("working_hours.is_active", true);
 
